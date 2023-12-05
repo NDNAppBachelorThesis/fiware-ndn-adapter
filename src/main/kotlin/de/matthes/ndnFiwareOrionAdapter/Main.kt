@@ -18,6 +18,8 @@ import net.named_data.jndn.security.identity.IdentityManager
 import net.named_data.jndn.security.identity.MemoryIdentityStorage
 import net.named_data.jndn.security.identity.MemoryPrivateKeyStorage
 import net.named_data.jndn.transport.TcpTransport
+import java.lang.Exception
+import java.net.ConnectException
 import java.nio.ByteBuffer
 import java.util.Random
 import kotlin.RuntimeException
@@ -56,7 +58,7 @@ class FiwareHandler : OnInterestCallback {
         }
 
         val response = Data(interest.name)
-        face.putData(response);
+        face.putData(response)
     }
 }
 
@@ -75,6 +77,23 @@ data class Attribute(
     }
 }
 
+
+fun waitForAPI(timeout: Int =10000) {
+    logger.info("Waiting for orion API to become accessible...")
+    val t0 = System.currentTimeMillis()
+
+    while (System.currentTimeMillis() - t0 < timeout) {
+        try {
+            khttp.get("http://$FIWARE_HOST:$FIWARE_PORT/version")
+            logger.info("Orion API is accessible after ${System.currentTimeMillis() - t0}ms")
+            return
+        } catch (e: Exception) {
+            Thread.sleep(100)
+        }
+    }
+
+    throw ConnectException("Can't connect to Orion server")
+}
 
 fun getAllEntities(): List<Entity> {
     val response = khttp.get(
@@ -209,13 +228,14 @@ fun test() {
 fun startNDNHandler() {
     Interest.setDefaultCanBePrefix(true)
     WireFormat.setDefaultWireFormat(Tlv0_3WireFormat.get())
+    waitForAPI(timeout = 10_000)
     createNecessarySubscriptionsIfRequired()
 
-    val face = Face(TcpTransport(), TcpTransport.ConnectionInfo("192.168.178.177", 6363));
+    val face = Face(TcpTransport(), TcpTransport.ConnectionInfo("192.168.178.177", 6363))
 
-    val keyChain = buildTestKeyChain();
-    keyChain.setFace(face);
-    face.setCommandSigningInfo(keyChain, keyChain.defaultCertificateName);
+    val keyChain = buildTestKeyChain()
+    keyChain.setFace(face)
+    face.setCommandSigningInfo(keyChain, keyChain.defaultCertificateName)
     var doRun = true
     val handler = FiwareHandler()
 
@@ -232,8 +252,8 @@ fun startNDNHandler() {
     )
 
     while (doRun) {
-        face.processEvents();
-        Thread.sleep(2);   // Prevent 100% CPU load
+        face.processEvents()
+        Thread.sleep(2)   // Prevent 100% CPU load
     }
 }
 
