@@ -1,0 +1,1 @@
+- md_ets_metadata table is only created when a subscription is received

@@ -1,0 +1,59 @@
+version: "3"
+
+services:
+
+  mongo-db:
+    image: mongo:4.4
+    command: --nojournal
+
+  orion:
+    image: fiware/orion
+    hostname: orion
+    container_name: fiware-orion
+    depends_on:
+      - mongo-db
+    networks:
+      - default
+    ports:
+      - "1026:1026"
+    command: -dbhost mongo-db -logLevel DEBUG
+
+  crate:
+    image: crate:4.2.7
+    hostname: crate-db
+    ports:
+      - "4200:4200"
+      - "4300:4300"
+    command:
+      - crate
+      - -Cauth.host_based.enabled=false
+      - -Ccluster.name=ndn-sensor-cluster
+      - -Chttp.cors.enabled=true
+      - -Chttp.cors.allow-origin="*"
+    environment:
+      - CRATE_HEAP_SIZE=2g
+
+  quantumleap:
+    image: orchestracities/quantumleap:edge
+    hostname: quantumleap
+    ports:
+      - "8668:8668"
+    depends_on:
+      - orion
+      - crate
+    environment:
+      - CRATE_HOST=crate
+
+  grafana:
+    image: grafana/grafana
+    depends_on:
+      - crate
+    ports:
+      - "3003:3000"
+    environment:
+      - GF_INSTALL_PLUGINS=orchestracities-map-panel,grafana-clock-panel,grafana-worldmap-panel
+    volumes:
+      - "grafana-storage:/var/lib/grafana"
+
+volumes:
+  grafana-storage: { }

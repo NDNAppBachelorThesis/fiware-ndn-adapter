@@ -1,0 +1,128 @@
+### Create sensor data
+POST http://127.0.0.1:1026/v2/entities
+Content-Type: application/json
+
+{
+  "id": "Room2",
+  "type": "Room",
+  "temperature": {
+    "value": 22,
+    "type": "Float"
+  },
+  "pressure": {
+    "value": 720,
+    "type": "Integer"
+  }
+}
+
+### Get all entries (can also filter)
+GET http://127.0.0.1:1026/v2/entities
+
+<> 2023-12-03T173844.200.json
+<> 2023-12-03T173837.200.json
+<> 2023-12-03T123510.200.json
+
+### Read single value by ID
+GET 127.0.0.1:1026/v2/entities/Room1
+
+### Get specific attributes only
+GET 127.0.0.1:1026/v2/entities/Room1?options=values&attrs=temperature,pressure
+
+
+
+### Create NGSI-LD entity
+POST localhost:1026/ngsi-ld/v1/entities
+Content-Type: application/ld+json
+
+{
+  "id": "urn:ngsi-ld:Sensor:1",
+  "type": "SensorValue",
+  "value": {
+    "type": "Property",
+    "value": 12.12
+  },
+  "unixtime": {
+    "type": "Property",
+    "value": 1701536003
+  },
+  "@context": [
+    "http://context/ngsi-context.jsonld"
+  ]
+}
+
+<> 2023-12-03T123555.400.json
+
+
+### Update NGSI-LD entity
+PATCH localhost:1026/ngsi-ld/v1/entities/urn:ngsi-ld:Sensor:1/attrs
+Content-Type: application/ld+json
+
+{
+  "type": "SensorValue",
+  "value": {
+    "type": "Property",
+    "value": 13.2
+  },
+  "unixtime": {
+    "type": "Property",
+    "value": 1701536091
+  },
+  "@context": [
+    "http://context/ngsi-context.jsonld"
+  ]
+}
+
+### Create data subscription
+POST localhost:1026/ngsi-ld/v1/subscriptions
+Content-Type: application/ld+json
+NGSILD-Tenant: openiot
+fiware-service: openiot
+fiware-servicepath: /
+
+{
+  "description": "Notify me of all sensor changes",
+  "type": "Subscription",
+  "entities": [
+    {"type": "SensorValue"}
+  ],
+  "watchedAttributes": ["unixtime", "value"],
+  "notification": {
+    "attributes": ["unixtime", "value"],
+    "format": "normalized",
+    "endpoint": {
+      "uri": "http://quantumleap:8668/v2/notify",
+      "accept": "application/json",
+      "receiverInfo": [
+        {
+          "key": "fiware-service",
+          "value": "openiot"
+        }
+      ]
+    }
+  },
+  "@context": "http://context/ngsi-context.jsonld"
+}
+
+
+### Get all subscriptions
+GET localhost:1026/ngsi-ld/v1/subscriptions
+NGSILD-Tenant: openiot
+
+<> 2023-12-04T110905.200.json
+<> 2023-12-04T110507.200.json
+<> 2023-12-04T110500.404.json
+<> 2023-12-04T110440.404.json
+<> 2023-12-03T173854.400.json
+
+
+### Query quantumleap
+GET localhost:8668/v2/entities/urn:ngsi-ld:Sensor:1/attrs/unixtime
+Accept: application/json
+Fiware-Service: openiot
+
+<> 2023-12-04T110515.404.json
+<> 2023-12-03T172132.404.json
+<> 2023-12-03T171019.404.json
+<> 2023-12-03T135606.404.json
+<> 2023-12-03T134528.404.json
+
