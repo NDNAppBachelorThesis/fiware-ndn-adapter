@@ -11,7 +11,13 @@ jobs:
     name: "Build docker container"
     runs-on: ubuntu-latest
     steps:
-      - name: Check out the repo
+      - name: "Configure Java"
+        uses: actions/setup-java@v3
+        with:
+          java-version: '20'
+          distribution: 'temurin'
+
+      - name: Check out the main repo
         uses: actions/checkout@v4
 
       - name: 'Login to GitHub Container Registry'
