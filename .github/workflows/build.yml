@@ -17,6 +17,15 @@ jobs:
           java-version: '20'
           distribution: 'temurin'
 
+      - name: Checkout jNDN
+        uses: actions/checkout@v4
+        with:
+          name: named-data/jndn
+          ref: refs/heads/master
+
+      - name: Compile and install jNDN
+        run: mvn install
+
       - name: Check out the main repo
         uses: actions/checkout@v4
 
