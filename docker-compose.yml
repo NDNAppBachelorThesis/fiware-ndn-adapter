@@ -55,5 +55,15 @@ services:
     volumes:
       - "grafana-storage:/var/lib/grafana"
 
+  ndn-adapter:
+    image: ndn-fiware-adapter:latest
+    depends_on:
+      - quantumleap
+      - orion
+    environment:
+      - FIWARE_HOST=orion
+      - LOG_LEVEL=INFO
+
+
 volumes:
   grafana-storage: { }

@@ -1,12 +1,64 @@
+@file:OptIn(DelicateCoroutinesApi::class)
+
 package de.matthes.ndnFiwareOrionAdapter
 
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import de.matthes.ndnFiwareOrionAdapter.api.Entity
 import de.matthes.ndnFiwareOrionAdapter.api.Subscription
-import java.lang.RuntimeException
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import net.named_data.jndn.*
+import net.named_data.jndn.encoding.Tlv0_3WireFormat
+import net.named_data.jndn.encoding.WireFormat
+import net.named_data.jndn.security.KeyChain
+import net.named_data.jndn.security.SecurityException
+import net.named_data.jndn.security.identity.IdentityManager
+import net.named_data.jndn.security.identity.MemoryIdentityStorage
+import net.named_data.jndn.security.identity.MemoryPrivateKeyStorage
+import net.named_data.jndn.transport.TcpTransport
+import java.nio.ByteBuffer
 import java.util.Random
+import kotlin.RuntimeException
 
+
+var FIWARE_HOST = System.getenv("FIWARE_HOST") ?: "localhost"
+var FIWARE_PORT = System.getenv("FIWARE_PORT") ?: 1026
+var LOG_LEVEL = System.getenv("LOG_LEVEL") ?: "INFO"
+
+var logger = Logger(LOG_LEVEL)
+
+
+class EntityNotFoundException : RuntimeException()
+
+class FiwareHandler : OnInterestCallback {
+    override fun onInterest(
+        prefix: Name,
+        interest: Interest,
+        face: Face,
+        interestFilterId: Long,
+        filter: InterestFilter?
+    ) {
+        val deviceId = interest.name[2].toEscapedString().toLong()
+        val value = ByteBuffer.wrap(ByteArray(8) { i -> interest.name[4].value.buf()[i] }.reversedArray()).double
+        logger.debug("FiwareHandler: $deviceId -> $value")
+
+        val fiwareId = "SensorValue:$deviceId:value"
+
+        // Run in coroutine to not block the main thread
+        GlobalScope.launch {
+            try {
+                updateEntityAttributes(fiwareId, listOf(Attribute("value", value)))
+            } catch (e: EntityNotFoundException) {
+                createEntity(fiwareId, type = "SensorValue", listOf(Attribute("value", value)))
+            }
+        }
+
+        val response = Data(interest.name)
+        face.putData(response);
+    }
+}
 
 data class Attribute(
     val name: String,
@@ -26,7 +78,7 @@ data class Attribute(
 
 fun getAllEntities(): List<Entity> {
     val response = khttp.get(
-        url = "http://localhost:1026/v2/entities",
+        url = "http://$FIWARE_HOST:$FIWARE_PORT/v2/entities",
     )
     val type = object : TypeToken<List<Entity>>() {}.type
     return Gson().fromJson(response.text, type)
@@ -40,7 +92,7 @@ fun createEntity(id: String, type: String, attributes: List<Attribute>) {
 
     val requestBody = Gson().toJson(requestBodyMap)
     val response = khttp.post(
-        url = "http://localhost:1026/v2/entities",
+        url = "http://$FIWARE_HOST:$FIWARE_PORT/v2/entities",
         headers = mapOf("Content-Type" to "application/json"),
         data = requestBody
     )
@@ -57,20 +109,22 @@ fun updateEntityAttributes(id: String, attributes: List<Attribute>) {
     }
 
     val requestBody = Gson().toJson(requestBodyMap)
-    val response = khttp.post(
-        url = "http://localhost:1026/v2/entities/${id}/attrs",
+    val response = khttp.put(   // Will also work with POST, but won't trigger a subscription if the value is the same
+        url = "http://$FIWARE_HOST:$FIWARE_PORT/v2/entities/${id}/attrs",
         headers = mapOf("Content-Type" to "application/json"),
         data = requestBody
     )
 
-    if (response.statusCode != 204) {
+    if (response.statusCode == 404) {
+        throw EntityNotFoundException()
+    } else if (response.statusCode != 204) {
         throw RuntimeException("UpdateEntity request returned with code ${response.statusCode}: ${response.text}")
     }
 }
 
 fun getAllSubscriptions(): List<Subscription> {
     val response = khttp.get(
-        url = "http://localhost:1026/v2/subscriptions/",
+        url = "http://$FIWARE_HOST:$FIWARE_PORT/v2/subscriptions/",
     )
     val type = object : TypeToken<List<Subscription>>() {}.type
     return Gson().fromJson(response.text, type)
@@ -93,7 +147,7 @@ fun createSubscription(description: String, idPattern: String? = ".*", type: Str
     )
     val requestBody = Gson().toJson(subscription)
     val response = khttp.post(
-        url = "http://localhost:1026/v2/subscriptions/",
+        url = "http://$FIWARE_HOST:$FIWARE_PORT/v2/subscriptions/",
         headers = mapOf("Content-Type" to "application/json"),
         data = requestBody,
     )
@@ -114,12 +168,28 @@ fun createNecessarySubscriptionsIfRequired() {
             attrs = listOf("value"),
             notificationUrl = "http://quantumleap:8668/v2/notify",
         )
-        println("Created required subscription")
+        logger.info("Created required subscription")
     } else {
-        println("Required subscriptions already exist")
+        logger.info("Required subscriptions already exist")
     }
 
 }
+
+
+fun buildTestKeyChain(): KeyChain {
+    val identityStorage = MemoryIdentityStorage()
+    val privateKeyStorage = MemoryPrivateKeyStorage()
+    val identityManager = IdentityManager(identityStorage, privateKeyStorage)
+    val keyChain = KeyChain(identityManager)
+    try {
+        keyChain.getDefaultCertificateName()
+    } catch (e: SecurityException) {
+        keyChain.createIdentity(Name("/test/identity"))
+        keyChain.getIdentityManager().defaultIdentity = Name("/test/identity")
+    }
+    return keyChain
+}
+
 
 fun test() {
     createNecessarySubscriptionsIfRequired()
@@ -130,18 +200,51 @@ fun test() {
     for (i in 0..100) {
         val value = rand.nextInt(1, 100)
         updateEntityAttributes(id, attributes = listOf(Attribute("value", value)))
-        println("Updated sensor value to ${value}")
+        logger.info("Updated sensor value to $value")
         Thread.sleep(250)
     }
 }
 
 
+fun startNDNHandler() {
+    Interest.setDefaultCanBePrefix(true)
+    WireFormat.setDefaultWireFormat(Tlv0_3WireFormat.get())
+    createNecessarySubscriptionsIfRequired()
+
+    val face = Face(TcpTransport(), TcpTransport.ConnectionInfo("192.168.178.177", 6363));
+
+    val keyChain = buildTestKeyChain();
+    keyChain.setFace(face);
+    face.setCommandSigningInfo(keyChain, keyChain.defaultCertificateName);
+    var doRun = true
+    val handler = FiwareHandler()
+
+    face.registerPrefix(
+        Name("/esp/fiware"),
+        handler,
+        { name ->
+            doRun = false
+            throw RuntimeException("Registration failed for name '${name.toUri()}'")
+        },
+        { prefix, registeredPrefixId ->
+            logger.info("Successfully registered '${prefix.toUri()}' with id $registeredPrefixId")
+        }
+    )
+
+    while (doRun) {
+        face.processEvents();
+        Thread.sleep(2);   // Prevent 100% CPU load
+    }
+}
+
+
 fun main() {
-    test()
 //    val entities = getAllEntities()
 //    createEntity("Product:007", "Product", listOf(Attribute("price", 230)))
 //    updateEntityAttributes("Produce:007", listOf(Attribute("price", 231)))
 //    val subscriptions = getAllSubscriptions()
 //    createSubscription(description = "Test description", type = "Product", attrs = listOf("price"), notificationUrl = "http://quantumleap:8668/v2/notify")
+//    test()
+    startNDNHandler()
     println("Done")
 }
