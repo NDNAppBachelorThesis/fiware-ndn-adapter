@@ -28,6 +28,8 @@ import kotlin.RuntimeException
 var FIWARE_HOST = System.getenv("FIWARE_HOST") ?: "localhost"
 var FIWARE_PORT = System.getenv("FIWARE_PORT") ?: 1026
 var LOG_LEVEL = System.getenv("LOG_LEVEL") ?: "INFO"
+var NDN_HOST = System.getenv("NDN_HOST") ?: "localhost"
+var NDN_PORT = System.getenv("NDN_PORT") ?: 6363
 
 var logger = Logger(LOG_LEVEL)
 
@@ -231,7 +233,7 @@ fun startNDNHandler() {
     waitForAPI(timeout = 10_000)
     createNecessarySubscriptionsIfRequired()
 
-    val face = Face(TcpTransport(), TcpTransport.ConnectionInfo("192.168.178.177", 6363))
+    val face = Face(TcpTransport(), TcpTransport.ConnectionInfo(NDN_HOST, NDN_PORT))
 
     val keyChain = buildTestKeyChain()
     keyChain.setFace(face)
