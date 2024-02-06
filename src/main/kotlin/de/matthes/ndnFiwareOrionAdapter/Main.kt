@@ -199,6 +199,7 @@ fun createNecessarySubscriptionsIfRequired() {
 }
 
 
+
 fun buildTestKeyChain(): KeyChain {
     val identityStorage = MemoryIdentityStorage()
     val privateKeyStorage = MemoryPrivateKeyStorage()
