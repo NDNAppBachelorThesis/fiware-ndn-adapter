@@ -22,6 +22,7 @@ import java.lang.Exception
 import java.net.ConnectException
 import java.nio.ByteBuffer
 import java.util.Random
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.RuntimeException
 
 
@@ -36,7 +37,7 @@ var logger = Logger(LOG_LEVEL)
 
 class EntityNotFoundException : RuntimeException()
 
-class FiwareHandler : OnInterestCallback {
+class FiwareHandler(private val lastProcessedCnt: AtomicInteger) : OnInterestCallback {
     override fun onInterest(
         prefix: Name,
         interest: Interest,
@@ -47,6 +48,7 @@ class FiwareHandler : OnInterestCallback {
         val deviceId = interest.name[2].toEscapedString().toLong()
         val value = ByteBuffer.wrap(ByteArray(8) { i -> interest.name[4].value.buf()[i] }.reversedArray()).double
         logger.debug("FiwareHandler: $deviceId -> $value")
+        lastProcessedCnt.set(0) // Reset counter on receiving data
 
         val fiwareId = "SensorValue:$deviceId:value"
 
@@ -227,35 +229,54 @@ fun test() {
 }
 
 
+// ToDo: Maybe auto-remove too old data
 fun startNDNHandler() {
     Interest.setDefaultCanBePrefix(true)
     WireFormat.setDefaultWireFormat(Tlv0_3WireFormat.get())
-    waitForAPI(timeout = 10_000)
-    createNecessarySubscriptionsIfRequired()
 
-    val face = Face(TcpTransport(), TcpTransport.ConnectionInfo(NDN_HOST, NDN_PORT))
+    while (true) {
+        waitForAPI(timeout = 10_000)
+        createNecessarySubscriptionsIfRequired()
 
-    val keyChain = buildTestKeyChain()
-    keyChain.setFace(face)
-    face.setCommandSigningInfo(keyChain, keyChain.defaultCertificateName)
-    var doRun = true
-    val handler = FiwareHandler()
+        val face = Face(TcpTransport(), TcpTransport.ConnectionInfo(NDN_HOST, NDN_PORT))
 
-    face.registerPrefix(
-        Name("/esp/fiware"),
-        handler,
-        { name ->
-            doRun = false
-            throw RuntimeException("Registration failed for name '${name.toUri()}'")
-        },
-        { prefix, registeredPrefixId ->
-            logger.info("Successfully registered '${prefix.toUri()}' with id $registeredPrefixId")
+        val keyChain = buildTestKeyChain()
+        keyChain.setFace(face)
+        face.setCommandSigningInfo(keyChain, keyChain.defaultCertificateName)
+        var doRun = true
+        val lastProcessedCnt = AtomicInteger(0)
+        val handler = FiwareHandler(lastProcessedCnt)
+
+        face.registerPrefix(
+            Name("/esp/fiware"),
+            handler,
+            { name ->
+                doRun = false
+                throw RuntimeException("Registration failed for name '${name.toUri()}'. Did you forget to enable " +
+                        "localhop_security?")
+            },
+            { prefix, registeredPrefixId ->
+                logger.info("Successfully registered '${prefix.toUri()}' with id $registeredPrefixId")
+            }
+        )
+
+        while (doRun) {
+            face.processEvents()
+            /*
+             * If the connection gets lost to the NFD we don't recognize it here.
+             * 10s no receives -> reconnect required
+             */
+            if (lastProcessedCnt.incrementAndGet() > 20_000 / 5) {
+                logger.info("Received no messages for a suspiciously long time. Reconnecting to NFD...")
+                try {
+                    face.shutdown()
+                } catch (_: Exception) {}
+                break
+            }
+            Thread.sleep(5)   // Prevent 100% CPU load
         }
-    )
 
-    while (doRun) {
-        face.processEvents()
-        Thread.sleep(2)   // Prevent 100% CPU load
+        Thread.sleep(1000)
     }
 }
 

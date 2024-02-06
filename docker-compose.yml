@@ -1,7 +1,6 @@
 version: "3"
 
 services:
-
   # Storage backend for fiware-orion
   mongo-db:
     image: mongo:4.4
@@ -60,16 +59,38 @@ services:
     volumes:
       - "grafana-storage:/var/lib/grafana"
 
+  # NFD service
+  nfd:
+    image: derteufelqwe/ndn-nfd:latest
+    hostname: nfd
+    ports:
+      - "6363:6363/tcp"
+      - "6363:6363/udp"
+
   # Converts the NDN messages to fiware-orion messages
   ndn-adapter:
-    image: ndn-fiware-adapter:latest
+    image: ghcr.io/ndnappbachelorthesis/ndn-fiware-adapter:latest
     depends_on:
       - quantumleap
       - orion
     environment:
       - FIWARE_HOST=orion
       - LOG_LEVEL=INFO
+      - NDN_HOST=nfd
+
+  # Management software for NDN
+  management:
+    image: ghcr.io/ndnappbachelorthesis/ndn-management:latest
+    ports:
+      - "3000:8080"
+    environment:
+      - DJANGO_SUPERUSER_USERNAME=admin
+      - DJANGO_SUPERUSER_PASSWORD=root
+    volumes:
+#      - "C:/Users/arne-/Git/ndn-management/db:/server/db"
+      - "management-db:/server/db"
 
 
 volumes:
   grafana-storage: { }
+  management-db: { }

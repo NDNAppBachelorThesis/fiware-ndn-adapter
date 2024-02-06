@@ -1,0 +1,86 @@
+### Create sensor data
+POST http://127.0.0.1:1026/v2/entities
+Content-Type: application/json
+
+{
+  "id": "Product:002",
+  "type": "Product",
+  "arne": {
+    "value": 23,
+    "type": "Float"
+  },
+  "price": {
+    "value": 720,
+    "type": "Integer"
+  }
+}
+
+
+### Update sensor data
+PATCH localhost:1026/v2/entities/Product:001/attrs
+Content-Type: application/json
+
+{
+  "price": {
+    "value": 733,
+    "type": "Integer"
+  }
+}
+
+
+### Get all entries (can also filter)
+GET http://127.0.0.1:1026/v2/entities
+
+<> 2023-12-04T230214.200.json
+
+
+
+### Create data subscription
+POST localhost:1026/v2/subscriptions/
+Content-Type: application/json
+
+{
+  "description": "Notify me of all product price changes",
+  "subject": {
+    "entities": [{"idPattern": ".*", "type": "Product"}],
+    "condition": {
+      "attrs": [ "price" ]
+    }
+  },
+  "notification": {
+    "http": {
+      "url": "http://quantumleap:8668/v2/notify"
+    }
+  }
+}
+
+
+### Get all subscriptions
+GET localhost:1026/v2/subscriptions/
+
+<> 2023-12-04T233506.200.json
+<> 2023-12-04T233358.200.json
+<> 2023-12-04T233353.200.json
+<> 2023-12-04T233312.200.json
+
+
+### Query quantumleap
+GET localhost:8668/v2/entities/Sensor:12345:value/attrs/value
+Accept: application/json
+
+<> 2023-12-04T233521.200.json
+<> 2023-12-04T233516.200.json
+<> 2023-12-04T233400.404.json
+<> 2023-12-04T233334.404.json
+<> 2023-12-04T224501.200.json
+<> 2023-12-04T224445.200.json
+<> 2023-12-04T224420.404.json
+
+
+### Ping
+GET http://127.0.0.1:1026/version
+
+<> 2023-12-05T235238.200.json
+<> 2023-12-05T235221.200.json
+<> 2023-12-05T235215.400.json
+<> 2023-12-05T235207.200.json
