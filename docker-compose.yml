@@ -71,11 +71,20 @@ services:
   ndn-adapter:
     image: ghcr.io/ndnappbachelorthesis/ndn-fiware-adapter:latest
     depends_on:
+      - nfd
       - quantumleap
       - orion
     environment:
       - FIWARE_HOST=orion
       - LOG_LEVEL=INFO
+      - NDN_HOST=nfd
+
+  # Responds to link quality requests
+  ndn-link-quality-handler:
+    image: ghcr.io/ndnappbachelorthesis/ndn-link-quality-handler:latest
+    depends_on:
+      - nfd
+    environment:
       - NDN_HOST=nfd
 
   # Management software for NDN
@@ -89,6 +98,7 @@ services:
     volumes:
 #      - "C:/Users/arne-/Git/ndn-management/db:/server/db"
       - "management-db:/server/db"
+#      - "/var/run/docker.sock:/var/run/docker.sock"
 
 
 volumes:
