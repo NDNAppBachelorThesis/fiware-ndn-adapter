@@ -18,14 +18,14 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 2,
+  "id": 1,
   "links": [],
   "liveNow": false,
   "panels": [
     {
       "datasource": {
         "type": "postgres",
-        "uid": "c5136561-b3aa-4a3b-abea-b97e5737d459"
+        "uid": "f6fe93e0-53a5-415b-9357-0c675ff56ba8"
       },
       "fieldConfig": {
         "defaults": {
@@ -77,7 +77,8 @@
               }
             ]
           },
-          "unit": "celsius"
+          "unit": "none",
+          "unitScale": true
         },
         "overrides": []
       },
@@ -138,7 +139,7 @@
     }
   ],
   "refresh": "",
-  "schemaVersion": 38,
+  "schemaVersion": 39,
   "tags": [],
   "templating": {
     "list": [
@@ -146,28 +147,28 @@
         "current": {
           "selected": true,
           "text": [
-            "Sensor:12345:value"
+            "SensorValue:198328652539720:value"
           ],
           "value": [
-            "Sensor:12345:value"
+            "SensorValue:198328652539720:value"
           ]
         },
         "datasource": {
-          "type": "postgres",
-          "uid": "c5136561-b3aa-4a3b-abea-b97e5737d459"
+          "type": "grafana-postgresql-datasource",
+          "uid": "f6fe93e0-53a5-415b-9357-0c675ff56ba8"
         },
         "definition": "SELECT distinct \"entity_id\" FROM \"doc\".\"etsensorvalue\" LIMIT 100;",
         "hide": 0,
         "includeAll": false,
         "label": "Sensor IDs",
-        "multi": true,
+        "multi": false,
         "name": "sensor_ids",
         "options": [],
         "query": "SELECT distinct \"entity_id\" FROM \"doc\".\"etsensorvalue\" LIMIT 100;",
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
-        "sort": 1,
+        "sort": 0,
         "type": "query"
       }
     ]
@@ -180,6 +181,6 @@
   "timezone": "",
   "title": "NDN Sensors",
   "uid": "f2ee73f8-9b2f-49a7-b76f-ccc397ae5018",
-  "version": 7,
+  "version": 2,
   "weekStart": ""
 }

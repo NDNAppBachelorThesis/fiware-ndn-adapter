@@ -90,15 +90,18 @@ services:
   # Management software for NDN
   management:
     image: ghcr.io/ndnappbachelorthesis/ndn-management:latest
+    # Otherwise, incoming IPs are changed inside the container and no response can be sent
+    network_mode: host
     ports:
-      - "3000:8080"
+      - "32200:32200/udp"
+      - "3000:3000"
     environment:
+      - HOST_IP=192.168.178.119
       - DJANGO_SUPERUSER_USERNAME=admin
       - DJANGO_SUPERUSER_PASSWORD=root
     volumes:
-#      - "C:/Users/arne-/Git/ndn-management/db:/server/db"
       - "management-db:/server/db"
-#      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "/var/run/docker.sock:/var/run/docker.sock"
 
 
 volumes:
