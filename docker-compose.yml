@@ -10,7 +10,6 @@ services:
   orion:
     image: fiware/orion
     hostname: orion
-    container_name: fiware-orion
     depends_on:
       - mongo-db
     networks:
