@@ -4,11 +4,14 @@ services:
   # Storage backend for fiware-orion
   mongo-db:
     image: mongo:4.4
+    hostname: mongo
+    labels:
+      de.matthes.ndn_app: "mongo"
     command: --nojournal
 
   # Context broker, which holds the latest sensor values only
   orion:
-    image: fiware/orion
+    image: fiware/orion:3.11.0
     hostname: orion
     depends_on:
       - mongo-db
@@ -16,6 +19,8 @@ services:
       - default
     ports:
       - "1026:1026"
+    labels:
+      de.matthes.ndn_app: "fiware-orion"
     command: -dbhost mongo-db -logLevel DEBUG
 
   # Storage backend for quantumleap
@@ -25,30 +30,34 @@ services:
     ports:
       - "4200:4200"
       - "4300:4300"
+    environment:
+      - CRATE_HEAP_SIZE=2g
+    labels:
+      de.matthes.ndn_app: "crate"
     command:
       - crate
       - -Cauth.host_based.enabled=false
       - -Ccluster.name=ndn-sensor-cluster
       - -Chttp.cors.enabled=true
       - -Chttp.cors.allow-origin="*"
-    environment:
-      - CRATE_HEAP_SIZE=2g
 
   # Stores historical data from fiware-orion
   quantumleap:
-    image: orchestracities/quantumleap:edge
+    image: orchestracities/quantumleap:1.0.0
     hostname: quantumleap
-    ports:
-      - "8668:8668"
     depends_on:
       - orion
       - crate
+    ports:
+      - "8668:8668"
     environment:
       - CRATE_HOST=crate
+    labels:
+      de.matthes.ndn_app: "quantumleap"
 
   # Visualize the historical data
   grafana:
-    image: grafana/grafana
+    image: grafana/grafana:10.2.4
     depends_on:
       - crate
     ports:
@@ -57,6 +66,8 @@ services:
       - GF_INSTALL_PLUGINS=orchestracities-map-panel,grafana-clock-panel,grafana-worldmap-panel
     volumes:
       - "grafana-storage:/var/lib/grafana"
+    labels:
+      de.matthes.ndn_app: "grafana"
 
   # NFD service
   nfd:
@@ -65,6 +76,8 @@ services:
     ports:
       - "6363:6363/tcp"
       - "6363:6363/udp"
+    labels:
+      de.matthes.ndn_app: "nfd"
 
   # Converts the NDN messages to fiware-orion messages
   ndn-adapter:
@@ -77,6 +90,8 @@ services:
       - FIWARE_HOST=orion
       - LOG_LEVEL=INFO
       - NDN_HOST=nfd
+    labels:
+      de.matthes.ndn_app: "ndn-adapter"
 
   # Responds to link quality requests
   ndn-link-quality-handler:
@@ -85,6 +100,9 @@ services:
       - nfd
     environment:
       - NDN_HOST=nfd
+      - NDN_ID=1
+    labels:
+      de.matthes.ndn_app: "ndn-link-quality-handler"
 
   # Management software for NDN
   management:
@@ -101,6 +119,8 @@ services:
     volumes:
       - "management-db:/server/db"
       - "/var/run/docker.sock:/var/run/docker.sock"
+    labels:
+      de.matthes.ndn_app: "management"
 
 
 volumes:
