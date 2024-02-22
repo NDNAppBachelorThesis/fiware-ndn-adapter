@@ -1,6 +1,9 @@
 package de.matthes.ndnFiwareOrionAdapter
 
-class Logger {
+/**
+ * A tiny custom logger
+ */
+class Logger(levelString: String) {
 
     enum class LogLevel(val i: Int, val text: String) {
         DEBUG(2, "DEBUG"),
@@ -9,7 +12,7 @@ class Logger {
 
     var level = LogLevel.INFO
 
-    constructor(levelString: String) {
+    init {
         level = when(levelString.uppercase()) {
             "DEBUG" -> LogLevel.DEBUG
             "INFO" -> LogLevel.INFO

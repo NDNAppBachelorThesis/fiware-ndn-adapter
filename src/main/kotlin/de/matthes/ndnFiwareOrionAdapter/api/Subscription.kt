@@ -1,5 +1,9 @@
 package de.matthes.ndnFiwareOrionAdapter.api
 
+
+/**
+ * Fiware API model
+ */
 data class Subscription(
     // Nullability required when creating a new element
     val id: String? = null,

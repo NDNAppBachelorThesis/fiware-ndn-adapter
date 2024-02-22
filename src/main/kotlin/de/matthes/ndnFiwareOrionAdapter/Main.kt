@@ -35,6 +35,9 @@ var NDN_PORT = getEnvAsInt("NDN_PORT") ?: 6363
 var logger = Logger(LOG_LEVEL)
 
 
+/**
+ * Gets an ENV and converts it to an int if possible
+ */
 fun getEnvAsInt(name: String): Int? {
     return try {
         System.getenv(name).toInt();
@@ -46,6 +49,9 @@ fun getEnvAsInt(name: String): Int? {
 
 class EntityNotFoundException : RuntimeException()
 
+/**
+ * The NDN interest handler for the '/etc/fiware' packages. These send the periodic measurement values.
+ */
 class FiwareHandler(private val lastProcessedCnt: AtomicInteger) : OnInterestCallback {
     override fun onInterest(
         prefix: Name,
@@ -92,6 +98,9 @@ data class Attribute(
 }
 
 
+/**
+ * Waits for the Fiware-Orion API to become accessible
+ */
 fun waitForAPI(timeout: Int = 10000) {
     logger.info("Waiting for orion API to become accessible...")
     val t0 = System.currentTimeMillis()
@@ -109,6 +118,9 @@ fun waitForAPI(timeout: Int = 10000) {
     throw ConnectException("Can't connect to Orion server")
 }
 
+/**
+ * Returns all entities from Fiware-Orion
+ */
 fun getAllEntities(): List<Entity> {
     val response = khttp.get(
         url = "http://$FIWARE_HOST:$FIWARE_PORT/v2/entities",
@@ -117,6 +129,9 @@ fun getAllEntities(): List<Entity> {
     return Gson().fromJson(response.text, type)
 }
 
+/**
+ * Creates an entry (e.g. a sensor and its measurement value) if it doesn't exist yet
+ */
 fun createEntity(id: String, type: String, attributes: List<Attribute>) {
     val requestBodyMap = mutableMapOf<String, Any>("id" to id, "type" to type)
     attributes.forEach { attrib ->
@@ -135,6 +150,9 @@ fun createEntity(id: String, type: String, attributes: List<Attribute>) {
     }
 }
 
+/**
+ * Updates an entries measurement value if the entry already exists
+ */
 fun updateEntityAttributes(id: String, attributes: List<Attribute>) {
     val requestBodyMap = mutableMapOf<String, Any>()
     attributes.forEach { attrib ->
@@ -155,6 +173,9 @@ fun updateEntityAttributes(id: String, attributes: List<Attribute>) {
     }
 }
 
+/**
+ * Returns a list of all available subscriptions
+ */
 fun getAllSubscriptions(): List<Subscription> {
     val response = khttp.get(
         url = "http://$FIWARE_HOST:$FIWARE_PORT/v2/subscriptions/",
@@ -163,6 +184,9 @@ fun getAllSubscriptions(): List<Subscription> {
     return Gson().fromJson(response.text, type)
 }
 
+/**
+ * Creates a subscription if fiware-orion
+ */
 fun createSubscription(
     description: String,
     idPattern: String? = ".*",
@@ -196,7 +220,9 @@ fun createSubscription(
     }
 }
 
-
+/**
+ * Creates the subscription, which propagates measurement sensor changes to quantumleap if it doesn't exist yet
+ */
 fun createNecessarySubscriptionsIfRequired() {
     val subscriptions = getAllSubscriptions()
 
@@ -215,6 +241,9 @@ fun createNecessarySubscriptionsIfRequired() {
 }
 
 
+/**
+ * Builds a keychain for signing NDN packets
+ */
 fun buildTestKeyChain(): KeyChain {
     val identityStorage = MemoryIdentityStorage()
     val privateKeyStorage = MemoryPrivateKeyStorage()
@@ -245,7 +274,9 @@ fun test() {
 }
 
 
-// ToDo: Maybe auto-remove too old data
+/**
+ * The main loop of the program
+ */
 fun startNDNHandler() {
     Interest.setDefaultCanBePrefix(true)
     WireFormat.setDefaultWireFormat(Tlv0_3WireFormat.get())
