@@ -55,11 +55,12 @@ class FiwareHandler(private val lastProcessedCnt: AtomicInteger) : OnInterestCal
         filter: InterestFilter?
     ) {
         val deviceId = interest.name[2].toEscapedString().toLong()
-        val value = ByteBuffer.wrap(ByteArray(8) { i -> interest.name[4].value.buf()[i] }.reversedArray()).double
+        val dataName = interest.name.getSubName(3, interest.name.size() - 3 - 1)
+        val value = ByteBuffer.wrap(ByteArray(8) { i -> interest.name[-1].value.buf()[i] }.reversedArray()).double
         logger.debug("FiwareHandler: $deviceId -> $value")
         lastProcessedCnt.set(0) // Reset counter on receiving data
 
-        val fiwareId = "SensorValue:$deviceId:value"
+        val fiwareId = "SensorValue:$deviceId:${dataName.toString().substring(1).replace('/', ':')}"
 
         // Run in coroutine to not block the main thread
         GlobalScope.launch {
@@ -91,7 +92,7 @@ data class Attribute(
 }
 
 
-fun waitForAPI(timeout: Int =10000) {
+fun waitForAPI(timeout: Int = 10000) {
     logger.info("Waiting for orion API to become accessible...")
     val t0 = System.currentTimeMillis()
 
@@ -162,7 +163,13 @@ fun getAllSubscriptions(): List<Subscription> {
     return Gson().fromJson(response.text, type)
 }
 
-fun createSubscription(description: String, idPattern: String? = ".*", type: String? = null, attrs: List<String>, notificationUrl: String) {
+fun createSubscription(
+    description: String,
+    idPattern: String? = ".*",
+    type: String? = null,
+    attrs: List<String>,
+    notificationUrl: String
+) {
     val subscription = Subscription(
         description = description,
         subject = Subscription.Subject(
@@ -206,7 +213,6 @@ fun createNecessarySubscriptionsIfRequired() {
     }
 
 }
-
 
 
 fun buildTestKeyChain(): KeyChain {
@@ -262,8 +268,10 @@ fun startNDNHandler() {
             handler,
             { name ->
                 doRun = false
-                throw RuntimeException("Registration failed for name '${name.toUri()}'. Did you forget to enable " +
-                        "localhop_security?")
+                throw RuntimeException(
+                    "Registration failed for name '${name.toUri()}'. Did you forget to enable " +
+                            "localhop_security?"
+                )
             },
             { prefix, registeredPrefixId ->
                 logger.info("Successfully registered '${prefix.toUri()}' with id $registeredPrefixId")
@@ -280,7 +288,8 @@ fun startNDNHandler() {
                 logger.info("Received no messages for a suspiciously long time. Reconnecting to NFD...")
                 try {
                     face.shutdown()
-                } catch (_: Exception) {}
+                } catch (_: Exception) {
+                }
                 break
             }
             Thread.sleep(5)   // Prevent 100% CPU load
