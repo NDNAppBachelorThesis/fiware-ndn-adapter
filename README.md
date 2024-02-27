@@ -1,4 +1,5 @@
 # Fiware NDN Adapter - Connect Fiware-Orion with NDN
+This Repository contains all information about Docker and the infrastructure
 
 ## Mirror
 If you are viewing this from a mirror then please visit `https://github.com/NDNAppBachelorThesis/fiware-ndn-adapter` to
@@ -24,6 +25,20 @@ Using the ``docker-compose.yml`` file is pretty straight forward. Just follow th
 6. After some time you can go the ``http://<yourIp>:3000``, login using user `admin` and password `root` (if you didn't 
    change the credentials) and check if the infrastructure is up and running
 
+## Available Ports
+This table contains the relevant ports and their purpose
+
+| Port | Container         | Protocol               | Description            |
+|------|-------------------|------------------------|------------------------|
+| 3000 | Management Server | HTTP                   | The management website |
+| 3003 | Grafana           | HTTP                   | The Grafana website    |
+| 4200 | CrateDB           | HTTP                   | CrateDB web interface  |
+| 5432 | CrateDB           | Postgres Wire Protocol | Access to the database |
+| 6363 | NFD               | NDN                    | The NFDs NDN network   |
+| 1026 | Fiware-Orion      | HTTP (API)             | The API endpoint       |
+| 8668 | Quantumleap       | HTTP (API)             | The API endpoint       |
+
+
 
 # How do add a Grafana Dashboard
 Grafana is hosted under port ``3003``
@@ -39,14 +54,18 @@ Go to Grafana and click ``Add your first data source`` and perform the following
   - Username: ``crate``
   - Password: ``<empty>``
   - TLS/SSL Mode: ``disable``
-- Click Save
+- Click ``Save & test``
 
 ## Import the dashboard
 This repository contains a file called ``grafana_dashboard.json``. 
-This can be imported to Grafana to get a basic dashboard up and running.
+It can be imported to Grafana to get a basic dashboard up and running.
 Perform the following steps to import the dashboard
-- To to ``<host>:3003/connections/datasources``, click the CrateDB datasource and copy the UUID (last part) from the URL
-- In the ``grafana_dashboard.json`` file search for `"type": "postgres"` and replace the uid below with the copied UUID. This must be done two times.
+- Go to ``<host>:3003/connections/datasources``, click the CrateDB datasource and copy the UUID (last part) from the URL 
+  (looks like this `aaec1afe-29d4-4004-b76f-2af5edc2c6bf`)
+- In the ``grafana_dashboard.json`` file search for `"type": "postgres"` and replace the uid below with the copied UUID. 
+  This must be done two times.
+  After that search for `"type": "grafana-postgresql-datasource"` and replace the uid below with the copied UUID.
+  This must be done one time.
 - Go to ``<host>:3003/dashboard/import``, paste the modified json file and click `Load` and then `Import`
 The dashboard is now imported
 
