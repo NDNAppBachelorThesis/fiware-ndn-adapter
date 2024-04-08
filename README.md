@@ -72,3 +72,10 @@ The dashboard is now imported
 ## Using the dashboard
 - In the top right change the date range to ``Last 15 minutes`` and the `Auto refresh interval` to `10s`
 - In the top left you have a dropdown to select which sensor you want to display
+
+
+# Getting started deveoping
+To get started developing locally do the following steps:
+1. Install the required dependencies using maven
+2. Run the `Main.kt` file with the `FIWARE_HOST` and `NDN_HOST` environment variables set to the 
+   IP of the fiware and ndn hosts. For this to work both NDN and Fiware-Orion must be running
