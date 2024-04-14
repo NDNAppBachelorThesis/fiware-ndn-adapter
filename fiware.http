@@ -29,7 +29,7 @@ Content-Type: application/json
 
 
 ### Get all entries (can also filter)
-GET http://127.0.0.1:1026/v2/entities
+GET http://{{fiwareHost}}:1026/v2/entities
 
 <> 2023-12-04T230214.200.json
 

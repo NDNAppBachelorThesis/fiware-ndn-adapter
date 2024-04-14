@@ -6,6 +6,8 @@ jobs:
   to_gitlab:
     name: "Mirror to Gitlab"
     runs-on: ubuntu-latest
+    # Job is currently disabled
+    if: false
     steps:
       - uses: actions/checkout@v3
         with:
@@ -16,4 +18,3 @@ jobs:
             git@git.itm.uni-luebeck.de:arne.matthes/fiware-ndn-adapter.git
           ssh_private_key:
             ${{ secrets.GITLAB_SSH_PRIVATE_KEY }}
-
